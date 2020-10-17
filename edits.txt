@@ -1,0 +1,43 @@
+Here is a list of changes I had to make to get ccleste to run on my calculator:
+-------------------------------------------------------------------------------
+Provided my own stdint.h because the Prizm SDK one did not work.
+-------------------------------------------------------------------------------
+Provided my own dodgy snprintf that ignores the "n" bit because the SDK doesn't include snprintf in the standard library. It does have sprintf though.
+-------------------------------------------------------------------------------
+"
+ccleste.bin section `.bss' will not fit in region `ram'
+region `ram' overflowed by 14140 bytes
+"
+
+BSS is the section used to store uninitialised data, e.g.
+static int BSS_Data[1024];
+This will take up 4096 bytes in the BSS section.
+
+In the ccleste source code, there is the following declaration:
+static OBJ objects[MAX_OBJECTS] = {{.active = false}};
+The OBJ struct is 2484 bytes. MAX_OBJECTS is 30. So `objects` takes up
+74520 bytes of BSS.
+
+The object struct contains comments that suggest that it should be a union.
+After converting OBJ to a union with anonymous structs holding the members, the error message changed to this:
+"
+region `ram' overflowed by 5456 bytes
+"
+Yay, 8468 bytes saved! However, this is still not enough.
+The OBJ struct was still 2204 bytes. Then I noticed this:
+"
+//big chest
+struct {
+	PARTICLE particles[50];
+	int particle_count;
+};
+"
+Each PARTICLE is 42 bytes. This means that every object, even ones that are not big chests will take 2104 bytes!
+The fix was simple enough. I introduced a MAX_BIG_CHEST_PARTICLES macro and set it to 25. I then replaced `this->particle_count<50` with `this->particle_count<MAX_BIG_CHEST_PARTICLES` in BIG_CHEST_draw.
+The problem of the BSS section filling RAM was solved!
+-------------------------------------------------------------------------------
+There were still undefined references to _main (see next section), and various math.h functions.
+I used snippets of musl libc to replace the maths functions.
+The musl sinf still internally called code using double, so I took the implementation from "https://www.cemetech.net/forum/viewtopic.php?t=6114&postdays=0&postorder=asc&start=160" - "Useful Prizm routines"
+-------------------------------------------------------------------------------
+The original ccleste used SDL for graphics, sound, and input. The calculator does not support sound anyway. It also does not support SDL.

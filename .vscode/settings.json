@@ -1,2 +1,6 @@
 {
+	"files.associations": {
+		"climits": "cpp"
+	},
+	"editor.formatOnSave": false
 }

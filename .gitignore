@@ -12,3 +12,5 @@ win-build/
 em-build/
 ccleste-win.zip
 build/
+*.g3a
+*.bin
