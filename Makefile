@@ -1,46 +1,132 @@
+#---------------------------------------------------------------------------------
+# Clear the implicit built in rules
+#---------------------------------------------------------------------------------
+.SUFFIXES:
+#---------------------------------------------------------------------------------
+# Set toolchain location in an environment var for future use, this will change
+# to use a system environment var in the future.
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(FXCGSDK)),)
+export FXCGSDK := $(abspath ../../)
+endif
 
-# set to 1 to use SDL1.2
-SDL_VER?=2
+include $(FXCGSDK)/toolchain/prizm_rules
 
-ifeq ($(SDL_VER),2)
-	SDL_CONFIG=sdl2-config
-	SDL_LD=-lSDL2 -lSDL2_mixer
+
+#---------------------------------------------------------------------------------
+# TARGET is the name of the output
+# BUILD is the directory where object files & intermediate files will be placed
+# SOURCES is a list of directories containing source code
+# INCLUDES is a list of directories containing extra header files
+#---------------------------------------------------------------------------------
+TARGET		:=	$(notdir $(CURDIR))
+BUILD		:=	build
+SOURCES		:=	src
+DATA		:=	data  
+INCLUDES	:=
+
+#---------------------------------------------------------------------------------
+# options for code and add-in generation
+#---------------------------------------------------------------------------------
+
+MKG3AFLAGS := -n basic:example -i uns:../unselected.bmp -i sel:../selected.bmp
+
+CFLAGS	= -Os -Wall $(MACHDEP) $(INCLUDE) -ffunction-sections -fdata-sections
+CXXFLAGS	=	$(CFLAGS)
+
+LDFLAGS	= $(MACHDEP) -T$(FXCGSDK)/toolchain/prizm.x -Wl,-static -Wl,-gc-sections
+
+#---------------------------------------------------------------------------------
+# any extra libraries we wish to link with the project
+#---------------------------------------------------------------------------------
+LIBS	:=	 -lfxcg -lc -lgcc
+
+#---------------------------------------------------------------------------------
+# list of directories containing libraries, this must be the top level containing
+# include and lib
+#---------------------------------------------------------------------------------
+LIBDIRS	:=
+
+#---------------------------------------------------------------------------------
+# no real need to edit anything past this point unless you need to add additional
+# rules for different file extensions
+#---------------------------------------------------------------------------------
+ifneq ($(BUILD),$(notdir $(CURDIR)))
+#---------------------------------------------------------------------------------
+
+export OUTPUT	:=	$(CURDIR)/$(TARGET)
+
+export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
+					$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+
+export DEPSDIR	:=	$(CURDIR)/$(BUILD)
+
+#---------------------------------------------------------------------------------
+# automatically build a list of object files for our project
+#---------------------------------------------------------------------------------
+CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+sFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.S)))
+BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+
+#---------------------------------------------------------------------------------
+# use CXX for linking C++ projects, CC for standard C
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(CPPFILES)),)
+	export LD	:=	$(CC)
 else
-ifeq ($(SDL_VER),1)
-	SDL_CONFIG=sdl-config
-	SDL_LD=-lSDL -lSDL_mixer
-else
-	SDL_CONFIG=$(error "invalid SDL version '$(SDL_VER)'. possible values are '1' and '2'")
-endif
+	export LD	:=	$(CXX)
 endif
 
-CFLAGS=-Wall -g -O2 `$(SDL_CONFIG) --cflags`
-LDFLAGS=$(SDL_LD)
-CELESTE_CC=$(CC)
+export OFILES	:=	$(addsuffix .o,$(BINFILES)) \
+					$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) \
+					$(sFILES:.s=.o) $(SFILES:.S=.o)
 
-ifneq ($(USE_FIXEDP),)
-	OUT=ccleste-fixedp
-	CELESTE_OBJ=celeste-fixedp.o
-	CFLAGS+=-DCELESTE_P8_FIXEDP
-	CELESTE_CC=$(CXX)
-else
-	OUT=ccleste
-	CELESTE_OBJ=celeste.o
-	LDFLAGS+=-lm
-endif
+#---------------------------------------------------------------------------------
+# build a list of include paths
+#---------------------------------------------------------------------------------
+export INCLUDE	:=	$(foreach dir,$(INCLUDES), -iquote $(CURDIR)/$(dir)) \
+					$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+					-I$(CURDIR)/$(BUILD) -I$(LIBFXCG_INC)
 
-ifneq ($(HACKED_BALLOONS),)
-	CFLAGS+=-DCELESTE_P8_HACKED_BALLOONS
-endif
+#---------------------------------------------------------------------------------
+# build a list of library paths
+#---------------------------------------------------------------------------------
+export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) \
+					-L$(LIBFXCG_LIB)
 
-all: $(OUT)
+export OUTPUT	:=	$(CURDIR)/$(TARGET)
+.PHONY: all clean
 
-$(OUT): sdl12main.c $(CELESTE_OBJ) celeste.h
-	$(CC) $(CFLAGS) $(LDFLAGS) sdl12main.c $(CELESTE_OBJ) -o $(OUT) 
+#---------------------------------------------------------------------------------
+all: $(BUILD)
+	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
-$(CELESTE_OBJ): celeste.c celeste.h
-	$(CELESTE_CC) $(CFLAGS) -c -o $(CELESTE_OBJ) celeste.c
+$(BUILD):
+	@mkdir $@
 
+#---------------------------------------------------------------------------------
+export CYGWIN := nodosfilewarning
 clean:
-	$(RM) ccleste ccleste-fixedp celeste.o celeste-fixedp.o
-	make -f Makefile.3ds clean
+	$(call rmdir,$(BUILD))
+	$(call rm,$(OUTPUT).bin)
+	$(call rm,$(OUTPUT).g3a)
+
+#---------------------------------------------------------------------------------
+else
+
+DEPENDS	:=	$(OFILES:.o=.d)
+
+#---------------------------------------------------------------------------------
+# main targets
+#---------------------------------------------------------------------------------
+$(OUTPUT).g3a: $(OUTPUT).bin
+$(OUTPUT).bin: $(OFILES)
+
+
+-include $(DEPENDS)
+
+#---------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------
