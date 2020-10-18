@@ -21,7 +21,7 @@ include $(FXCGSDK)/toolchain/prizm_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	Celeste
 BUILD		:=	build
-SOURCES		:=	src
+SOURCES		:=	src src/gfx
 DATA		:=	data  
 INCLUDES	:=
 

@@ -1,6 +1,7 @@
 {
 	"files.associations": {
-		"climits": "cpp"
+		"climits": "cpp",
+		"sdl12main": "c"
 	},
 	"editor.formatOnSave": false
 }
