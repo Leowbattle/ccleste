@@ -19,7 +19,7 @@ include $(FXCGSDK)/toolchain/prizm_rules
 # SOURCES is a list of directories containing source code
 # INCLUDES is a list of directories containing extra header files
 #---------------------------------------------------------------------------------
-TARGET		:=	$(notdir $(CURDIR))
+TARGET		:=	Celeste
 BUILD		:=	build
 SOURCES		:=	src
 DATA		:=	data  
@@ -29,7 +29,7 @@ INCLUDES	:=
 # options for code and add-in generation
 #---------------------------------------------------------------------------------
 
-MKG3AFLAGS := -n basic:example -i uns:../unselected.bmp -i sel:../selected.bmp
+MKG3AFLAGS := -n basic:Celeste -i uns:../unselected.bmp -i sel:../selected.bmp
 
 CFLAGS	= -Os -Wall $(MACHDEP) $(INCLUDE) -ffunction-sections -fdata-sections
 CXXFLAGS	=	$(CFLAGS)

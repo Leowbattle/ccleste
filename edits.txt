@@ -36,7 +36,7 @@ Each PARTICLE is 42 bytes. This means that every object, even ones that are not 
 The fix was simple enough. I introduced a MAX_BIG_CHEST_PARTICLES macro and set it to 25. I then replaced `this->particle_count<50` with `this->particle_count<MAX_BIG_CHEST_PARTICLES` in BIG_CHEST_draw.
 The problem of the BSS section filling RAM was solved!
 -------------------------------------------------------------------------------
-There were still undefined references to _main (see next section), and various math.h functions.
+There were still undefined references to _main (see next section), and various math.h functions, which is ironic considering this is a calculator.
 I used snippets of musl libc to replace the maths functions.
 The musl sinf still internally called code using double, so I took the implementation from "https://www.cemetech.net/forum/viewtopic.php?t=6114&postdays=0&postorder=asc&start=160" - "Useful Prizm routines"
 -------------------------------------------------------------------------------
