@@ -475,96 +475,70 @@ typedef struct {
 } HAIR;
 
 //OBJECT strucutre
-typedef union {
-	struct {
-		bool active;
-		short id; //unique identifier for each object, incremented per object
-	};
+typedef struct {
+	bool active;
+	short id; //unique identifier for each object, incremented per object
 
 	//inherited
-	struct {
-		OBJTYPE type;
-		bool collideable, solids;
-		float spr;
-		bool flip_x, flip_y;
-		float x, y;
-		HITBOX hitbox;
-		VEC spd;
-		VEC rem;
-	};
+	OBJTYPE type;
+	bool collideable, solids;
+	float spr;
+	bool flip_x, flip_y;
+	float x, y;
+	HITBOX hitbox;
+	VEC spd;
+	VEC rem;
 
 	//player
-	struct {
-		bool p_jump, p_dash;
-		int grace, jbuffer, djump, dash_time;
-		short dash_effect_time; //can underflow in normal gameplay (after 18 minutes)
-		VEC dash_target;
-		VEC dash_accel;
-		float spr_off;
-		bool was_on_ground;
-		HAIR hair[5]; //also player_spawn
-	};
+	bool p_jump, p_dash;
+	int grace, jbuffer, djump, dash_time;
+	short dash_effect_time; //can underflow in normal gameplay (after 18 minutes)
+	VEC dash_target;
+	VEC dash_accel;
+	float spr_off;
+	bool was_on_ground;
+	HAIR hair[5]; //also player_spawn
 
 	//player_spawn
-	struct {
-		int state, delay;
-		VEC target;
-	};
+	int state, delay;
+	VEC target;
 
 	//spring
-	struct {
-		int hide_in, hide_for;
-	};
+	int hide_in, hide_for;
 
 	//balloon
-	struct {
-		int timer;
-		float offset, start;
-	};
+	int timer;
+	float offset, start;
 
 	//fruit
-	struct {
-		float off;
-	};
+	float off;
 
 	//fly_fruit
-	struct {
-		bool fly;
-		float step;
-		int sfx_delay;
-	};
+	bool fly;
+	float step;
+	int sfx_delay;
 
 	//lifeup
-	struct {
-		int duration;
-		float flash;
-	};
+	int duration;
+	float flash;
 
 	//platform
-	struct {
-		float last, dir;
-	};
+	float last, dir;
 
 	//message
-	struct {
-		const char* text;
-		float index;
-		VECI off2; //changed from off..
-	};
+	const char* text;
+	float index;
+	VECI off2; //changed from off..
+
+	#define MAX_BIG_CHEST_PARTICLES 25
 
 	//big chest
-	struct {
-		#define MAX_BIG_CHEST_PARTICLES 25
-
-		PARTICLE particles[MAX_BIG_CHEST_PARTICLES];
-		int particle_count;
-	};
+	PARTICLE particles[MAX_BIG_CHEST_PARTICLES];
+	int particle_count;
 
 	//flag
-	struct {
-		int score;
-		bool show;
-	};
+	int score;
+	bool show;
 } OBJ;
 
 //OBJ function declarations fuckery

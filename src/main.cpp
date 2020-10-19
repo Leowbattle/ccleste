@@ -6,6 +6,7 @@
 
 #include <fxcg/display.h>
 #include <fxcg/keyboard.h>
+#include <fxcg/rtc.h>
 
 #include "celeste.h"
 #include "tilemap.h"
@@ -23,7 +24,7 @@ typedef struct SDL_Rect {
 } SDL_Rect;
 
 void fillRect(int x, int y, int w, int h, color_t colour);
-void drawSprite(const color_t* sprite, SDL_Rect src, int x, int y, int imgW);
+void drawSprite(Image* image, SDL_Rect src, int x, int y);
 
 int pico8emu(CELESTE_P8_CALLBACK_TYPE call, ...);
 
@@ -98,13 +99,34 @@ static void OSDdraw(void) {
 
 int main() {
 	InitCalculator();
-	ShowLoadingScreen();
+	
+	LoadImages();
 
 	Celeste_P8_set_call_func(pico8emu);
+	Celeste_P8_set_rndseed(RTC_GetTicks());
 	Celeste_P8_init();
 
 	while (running) {
 		mainLoop();
+
+		// printf("a        %d %d", gfx_image.width, gfx_image.height);
+
+		// color_t* vram = (color_t*)GetVRAMAddress();
+		// for (int i = 0; i < gfx_image.height; i++) {
+		// 	for (int j = 0; j < gfx_image.width; j++) {
+		// 		int offset = i * gfx_image.width + j;
+		// 		uint8_t b = gfx_image.pixels[offset / 2 + offset % 2];
+
+		// 		vram[i * LCD_WIDTH_PX + j] = getcolor(b);
+		// 	}
+		// }
+
+		// drawSprite(&gfx_image, {0, 0, 128, 64}, 0, 64);
+
+		// Bdisp_PutDisp_DD();
+
+		// int key;
+		// GetKey(&key);
 	}
 
 	return 0;
@@ -113,15 +135,14 @@ int main() {
 void InitCalculator() {
 	EnableStatusArea(3); // Disable the status area.
 	Bdisp_EnableColor(1); // Enable 16-bit color.
-}
 
-void ShowLoadingScreen() {
 	DrawFrame(0); // Draw a black screen border.
 	Bdisp_Fill_VRAM(0, 3); // Fill screen with black.
-	VRAM_CopySprite((const color_t*)loading_image.pixel_data, (LCD_WIDTH_PX - loading_image.width) / 2, (LCD_HEIGHT_PX - loading_image.height) / 2, loading_image.width, loading_image.height); // Draw loading image.
 }
 
 static void mainLoop() {
+	int frameStart = RTC_GetTicks();
+
 	//Bdisp_Fill_VRAM(0, 3); // Fill screen with black.
 
 	if (keyDown_fast(KEY_PRGM_MENU)) {
@@ -141,6 +162,7 @@ static void mainLoop() {
 		enable_screenshake = !enable_screenshake;
 	}
 
+	buttons_state = 0;
 	{
 		// Update pico8 button state.
 		if (keyDown_fast(KEY_PRGM_LEFT))  buttons_state |= (1<<0);
@@ -164,6 +186,9 @@ static void mainLoop() {
 	OSDdraw();
 
 	Bdisp_PutDisp_DD(); // Display backbuffer on screen.
+
+	// Wait for the end of the frame.
+	while (!RTC_Elapsed_ms(frameStart, 32));
 }
 
 // The calculator is big endian. Swap bytes in images.
@@ -180,18 +205,17 @@ void fillRect(int x, int y, int w, int h, color_t colour) {
 	}
 }
 
-void drawSprite(const color_t* sprite, SDL_Rect src, int x, int y, int imgW) {
+void drawSprite(Image* image, SDL_Rect src, int x, int y) {
 	color_t* vram = (color_t*)GetVRAMAddress();
 	for (int i = 0; i < src.h; i++) {
 		for (int j = 0; j < src.w; j++) {
-			vram[(i + y) * LCD_WIDTH_PX + j + x] = color_correct(sprite[(i + src.y) * imgW + j + src.x]);
+			int offset = (i + src.y) * image->width + j + src.x;
+			//int offset = (src.y + i) * image->width + src.x + j;
+			uint8_t b = image->pixels[offset] >> 4;
+
+			vram[(i + y) * LCD_WIDTH_PX + j + x] = getcolor(b);
 		}
 	}
-	// for (int i = 0; i < src.h; i++) {
-	// 	for (int j = 0; j < src.w; j++) {
-	// 		vram[(i + y) * LCD_WIDTH_PX + j + x] = getcolor(sprite[(i + src.x) * src.w + j + src.y]);
-	// 	}
-	// }
 }
 
 static void p8_rectfill(int x0, int y0, int x1, int y1, int col) {
@@ -210,7 +234,8 @@ static void p8_print(const char* str, int x, int y, int col) {
 		srcrc.y *= scale;
 		srcrc.w = srcrc.h = 8*scale;
 
-		drawSprite((const color_t*)font_image.pixel_data, srcrc, x, y, font_image.width);
+		// TODO col
+		drawSprite(&font_image, srcrc, x, y);
 		x += 4;
 	}
 }
@@ -309,7 +334,7 @@ int pico8emu(CELESTE_P8_CALLBACK_TYPE call, ...) {
 				};
 				//Xblit(gfx, &srcrc, screen, &dstrc, 0,flipx,flipy);
 				// TODO Flip
-				drawSprite((const color_t*)gfx_image.pixel_data, srcrc, x, y, gfx_image.width);
+				drawSprite(&gfx_image, srcrc, x, y);
 			}
 		)
 		CASE(CELESTE_P8_BTN, //btn(b)
@@ -343,9 +368,13 @@ int pico8emu(CELESTE_P8_CALLBACK_TYPE call, ...) {
 				//SDL_FillRect(screen, &(SDL_Rect){scale*(cx-1), scale*cy, scale*3, scale}, realcolor);
 				//SDL_FillRect(screen, &(SDL_Rect){scale*cx, scale*(cy-1), scale, scale*3}, realcolor);
 			} else if (r <= 2) {
+				fillRect(cx - 2, cy - 1, 5, 3, realcolor);
+				fillRect(cx - 1, cy - 2, 3, 5, realcolor);
 				//SDL_FillRect(screen, &(SDL_Rect){scale*(cx-2), scale*(cy-1), scale*5, scale*3}, realcolor);
 				//SDL_FillRect(screen, &(SDL_Rect){scale*(cx-1), scale*(cy-2), scale*3, scale*5}, realcolor);
 			} else if (r <= 3) {
+				fillRect(cx - 3, cy - 1, 7, 3, realcolor);
+				fillRect(cx - 1, cy - 3, 3, 7, realcolor);
 				//SDL_FillRect(screen, &(SDL_Rect){scale*(cx-3), scale*(cy-1), scale*7, scale*3}, realcolor);
 				//SDL_FillRect(screen, &(SDL_Rect){scale*(cx-1), scale*(cy-3), scale*3, scale*7}, realcolor);
 				//SDL_FillRect(screen, &(SDL_Rect){scale*(cx-2), scale*(cy-2), scale*5, scale*5}, realcolor);
@@ -463,7 +492,8 @@ int pico8emu(CELESTE_P8_CALLBACK_TYPE call, ...) {
 
 						//SDL_BlitSurface(gfx, &srcrc, screen, &dstrc);
 						//Xblit(gfx, &srcrc, screen, &dstrc, 0, 0, 0);
-						drawSprite((const color_t*)gfx_image.pixel_data, srcrc, x, y, gfx_image.width);
+						drawSprite(&gfx_image, srcrc, x * 8, y * 8);
+						//fillRect(x * 8, y * 8, 8, 8, 0xffff);
 					}
 				}
 			}

@@ -3,5 +3,6 @@
 		"climits": "cpp",
 		"sdl12main": "c"
 	},
-	"editor.formatOnSave": false
+	"editor.formatOnSave": false,
+	"hexdump.littleEndian": true
 }

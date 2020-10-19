@@ -1,15 +1,19 @@
 #ifndef GFX_HPP
 #define GFX_HPP
 
+#include "../stdint.h"
+
+#include <fxcg/display.h>
+
 typedef struct Image {
-	unsigned int width;
-	unsigned int height;
-	unsigned int bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */ 
-	unsigned char pixel_data[];
+	const uint8_t* pixels;
+	int width;
+	int height;
 } Image;
 
-const extern Image loading_image;
-const extern Image gfx_image;
-const extern Image font_image;
+extern Image gfx_image;
+extern Image font_image;
+
+void LoadImages();
 
 #endif
